@@ -1,0 +1,13 @@
+[project]
+name = "slid-detection"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "numpy>=2.5.1",
+    "opencv-python",
+    "pandas>=3.0.5",
+    "pickle",
+    "scipy>=1.18.0",
+]
