@@ -8,6 +8,11 @@ def write_video(  output_path , frames , fps  ) :
         out.release()
 
 
+def get_center_of_box(point ) : 
+    x1 , y1 , x2, y2 = point 
+    x_center = int(x1 + (x2-x1  )/2 ) 
+    y_center = int(y1-(y1-y2)/2 ) 
+    return (x_center, y_center )
 def read_frames(path) : 
     frames = [] 
     cap = cv2.VideoCapture(path) 

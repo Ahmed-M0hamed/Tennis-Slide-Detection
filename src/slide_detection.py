@@ -3,6 +3,8 @@ import pandas as pd
 from typing import List 
 from .homography import transform_player_keypoints 
 from scipy.signal import savgol_filter
+from dataclasses import dataclass 
+from .utils import get_center_of_box 
 @dataclass
 class FeatureSeries:
     com_xy: np.ndarray
@@ -24,11 +26,12 @@ class SlideEvent:
 
 
 class SlideDetection: 
-    def __init__(self, window_size : int = 15, min_gap_frames :int = 5 , stride : int = 1 ,DECEL_SMOOTHNESS_THRESH :float = .6, SLIDE_DISPLACEMENT_RATIO_THRESH : float = .5, STRIDE_LENGTH_BASELINE:float = .9, MIN_PLANT_FRAMES :int = 4 , ANKLE_PLANT_VEL_THRESH :float = .35, fps : int = 25 ) : 
+    def __init__(self, window_size : int = 15, valid_window_ratio:float = .8,  min_gap_frames :int = 5 , stride : int = 1 ,DECEL_SMOOTHNESS_THRESH :float = .6, SLIDE_DISPLACEMENT_RATIO_THRESH : float = .5, STRIDE_LENGTH_BASELINE:float = .9, MIN_PLANT_FRAMES :int = 4 , ANKLE_PLANT_VEL_THRESH :float = .35, fps : int = 25 ) : 
         self.min_gap_frames = min_gap_frames
         self.window_size = window_size
         self.stride = stride 
         self.fps  = fps 
+        self.valid_window_ratio = valid_window_ratio
         self.DECEL_SMOOTHNESS_THRESH = DECEL_SMOOTHNESS_THRESH
         self.SLIDE_DISPLACEMENT_RATIO_THRESH = SLIDE_DISPLACEMENT_RATIO_THRESH
         self.ANKLE_PLANT_VEL_THRESH = ANKLE_PLANT_VEL_THRESH
@@ -47,19 +50,24 @@ class SlideDetection:
 
         return window , new_center_index 
 
-    def _check_window(self, window):
-        gap = 1
-        index = 0 
+    def _check_window(self, window  ):
+        previous_frame = None 
+        valid_frames = 0 
+        valid_num = int(self.valid_window_ratio * len(window))
 
-        while index < len(window) : 
-            if window[index] is None or not window[index]['valid_keypoints']:
-                gap += 1
-                if gap > self.min_gap_frames:
-                    return False
-            else:
-                gap = 1
-            index +=1 
-        return True
+        for frame in window : 
+
+            if not frame['player_pos'] or frame['player_pos'] is None or not frame['valid_keypoints']:
+                continue
+            frame_id = frame['frame_id']
+            valid_frames += 1 
+            if previous_frame is not None : 
+                if frame_id - previous_frame > self.min_gap_frames : 
+                    return False 
+
+            previous_frame = frame_id 
+        return valid_frames > valid_num 
+     
     def _turn_window_into_df(self , keypoints_window , annotations ) : 
  
         keypoints_data = { 11 : 'left_hip' , 12 : 'right_hip' , 13 : 'left_knee' , 14 : 'right_knee' , 15 : 'left_ankle' , 16 :'right_ankle' , 17 : 'com'}  
@@ -246,7 +254,7 @@ class SlideDetection:
             w_score = self.score_plant_window(feats, s, e)
             scores[s:e + 1] = np.maximum(scores[s:e + 1], w_score)
         return scores
-    def extract_slide_events(self, scores: np.ndarray, com_speed: np.ndarray) -> list[SlideEvent]:
+    def extract_slide_events(self, scores: np.ndarray, com_speed: np.ndarray , frames_ids : List) -> list[SlideEvent]:
         events = []
         in_event = False
         start_idx = None
@@ -260,14 +268,18 @@ class SlideDetection:
                 if end_idx - start_idx + 1 >= self.MIN_EVENT_FRAMES:
                     conf = float(np.mean(scores[start_idx:end_idx + 1]))
                     peak = float(np.max(com_speed[start_idx:end_idx + 1]))
-                    events.append(SlideEvent(start_idx, end_idx, conf, peak))
+                    start = frames_ids[start_idx]
+                    end = frames_ids[end_idx]
+                    events.append(SlideEvent(start, end, conf, peak))
                 start_idx = None
         if in_event:
             end_idx = len(scores) - 1
             if end_idx - start_idx + 1 >= self.MIN_EVENT_FRAMES:
                 conf = float(np.mean(scores[start_idx:end_idx + 1]))
                 peak = float(np.max(com_speed[start_idx:end_idx + 1]))
-                events.append(SlideEvent(start_idx, end_idx, conf, peak))
+                start = frames_ids[start_idx]
+                end = frames_ids[end_idx]
+                events.append(SlideEvent(start, end, conf, peak))
         return events
 
     def infer(self  , keypoints_annotations , annotations ) : 
@@ -289,13 +301,12 @@ class SlideDetection:
                     feats = self._extract_features(engineered)
                     plant_windows = self.find_plant_windows(feats.ankle_speed_min)
                     scores = self.per_frame_slide_score(feats, plant_windows)
-                    events = self.extract_slide_events(scores, feats.com_speed)
+                    events = self.extract_slide_events(scores, feats.com_speed , engineered.frame_id.values )
                     if events : 
+
                         video_events.append(events)
-                        print(keypoints_annotations[new_center][0]['frame_id']) 
-                        print(events)
             window_center = new_center
-        return video_events  ,engineered
+        return video_events  
         
             
         
