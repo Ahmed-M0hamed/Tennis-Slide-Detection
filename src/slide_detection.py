@@ -284,7 +284,6 @@ class SlideDetection:
 
     def infer(self  , keypoints_annotations , annotations ) : 
         window_center = 0 
-
         video_events = []
         while window_center + int(self.window_size / 2 ) < len(keypoints_annotations): 
 
@@ -296,6 +295,7 @@ class SlideDetection:
                 state = self._check_window(player_window)
 
                 if state : 
+                    valid_window +=1 
                     df  = self._turn_window_into_df(player_window , annotations)
                     engineered = self._feature_engineering(df)
                     feats = self._extract_features(engineered)
@@ -306,6 +306,7 @@ class SlideDetection:
 
                         video_events.append(events)
             window_center = new_center
+
         return video_events  
         
             
