@@ -1,5 +1,5 @@
 import cv2 
-from .court_tempelete import build_court_template 
+from .court_template import build_court_template 
 import numpy as np 
 
 def compute_homography(
@@ -20,7 +20,7 @@ def compute_homography(
     return H, mask
 def transform_player_keypoints(court_keypoints , player_keypoints ) : 
     court_template, kp_world = build_court_template()
-    dtl , dtr , dbl , dbr , stl , sbl , str_ , sbr , svtl , svtr , svbl , svbr , svc_mid_t ,svc_mid_b = keypoints
+    dtl , dtr , dbl , dbr , stl , sbl , str_ , sbr , svtl , svtr , svbl , svbr , svc_mid_t ,svc_mid_b = court_keypoints
     kp_frame = np.array([dtl , dtr ,dbr ,  dbl  , stl , str_ ,sbr,  sbl   , svtl ,
                               svtr , svbr, svbl , svc_mid_t ,svc_mid_b] , dtype=np.float32) 
     H, mask = compute_homography(kp_frame, kp_world) 

@@ -26,7 +26,9 @@ class SlideEvent:
 
 
 class SlideDetection: 
-    def __init__(self, window_size : int = 15, valid_window_ratio:float = .8,  min_gap_frames :int = 5 , stride : int = 1 ,DECEL_SMOOTHNESS_THRESH :float = .6, SLIDE_DISPLACEMENT_RATIO_THRESH : float = .5, STRIDE_LENGTH_BASELINE:float = .9, MIN_PLANT_FRAMES :int = 4 , ANKLE_PLANT_VEL_THRESH :float = .35, fps : int = 25 ) : 
+    def __init__(self, window_size : int = 15, valid_window_ratio:float = .7,  min_gap_frames :int = 5 , stride : int = 1 ,DECEL_SMOOTHNESS_THRESH :float = .4, 
+                 SLIDE_DISPLACEMENT_RATIO_THRESH : float = .5, STRIDE_LENGTH_BASELINE:float = .9, MIN_PLANT_FRAMES :int = 4 
+                 , ANKLE_PLANT_VEL_THRESH :float = .8, fps : int = 30 ) : 
         self.min_gap_frames = min_gap_frames
         self.window_size = window_size
         self.stride = stride 
@@ -295,7 +297,6 @@ class SlideDetection:
                 state = self._check_window(player_window)
 
                 if state : 
-                    valid_window +=1 
                     df  = self._turn_window_into_df(player_window , annotations)
                     engineered = self._feature_engineering(df)
                     feats = self._extract_features(engineered)
